@@ -1,3 +1,6 @@
+--discord : https://discord.gg/MYb6TcHmq9
+--Sotek#1234
+
 ESX = nil
 local HasLoadCloth			  = false
 local antispam = true

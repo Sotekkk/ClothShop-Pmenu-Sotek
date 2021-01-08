@@ -29,6 +29,7 @@ dependencies {
   'esx_skin'
 }
 
-
+--discord : https://discord.gg/MYb6TcHmq9
+--Sotek#1234
 
  

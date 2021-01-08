@@ -1,3 +1,5 @@
+--discord : https://discord.gg/MYb6TcHmq9
+--Sotek#1234
 ESX = nil
 
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
