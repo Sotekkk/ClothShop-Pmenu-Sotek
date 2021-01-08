@@ -24,7 +24,6 @@ Citizen.CreateThread(function()
 end)
 
 local color_white = {255, 255, 255}
-local color_blue = {30, 70, 200}
 local color_black = {0, 0, 0}
 local defaultHeader = {"commonmenu", "interaction_bgd"}
 local defaultMenu = { { name = "Vide" } }
@@ -82,7 +81,7 @@ function PMenu:resetMenu()
 	self.Base = {
 		Header = defaultHeader,
 		Color = color_black,
-		HeaderColor = color_blue,
+		HeaderColor = color_white,
 		Title = CCore and CCore.user and CCore.user.name or "Menu",
 		Checkbox = { Icon = { [0] = {"commonmenu", "shop_box_blank"}, [1] = {"commonmenu", "shop_box_tickb"} } }
 	}
@@ -284,12 +283,13 @@ function PMenu:ProcessControl()
 			end
 		end
 		if currentBtn.parentSlider ~= nil and ((boolLEFT and currentBtn.parentSlider < 1.5 + parentSliderSize) or (boolRIGHT and currentBtn.parentSlider > .5 - parentSliderSize)) then
-			currentBtn.parentSlider = boolLEFT and round(currentBtn.parentSlider + .01, 2) or round(currentBtn.parentSlider - .01, 2)
+			
+			currentBtn.parentSlider = boolLEFT and currentBtn.parentSlider + .01 or currentBtn.parentSlider - .01
 			if self.Events["onSlider"] then self.Events["onSlider"](self, self.Data, currentBtn, self.Pag[3], allButtons, currentBtn.parentSlider - parentSliderSize) end
 			Citizen.Wait(10)
 		end
 	end
-	if currentMenu and currentMenu.extra or currentBtn and currentBtn.opacity then
+	if currentMenu and currentMenu.extra or currentBtn and currentBtn.opacity or currentBtn.advSlider then
 		if currentBtn.advSlider and IsDisabledControlPressed(0, 24) then
 			local x, y, w = table.unpack(self.Data.advSlider)
 			local left, right = IsMouseInBounds(x - 0.01, self.Height, .015, .03), IsMouseInBounds(x - w + 0.01, self.Height, .015, .03)
@@ -330,62 +330,98 @@ function DrawText2(intFont, stirngText, floatScale, intPosX, intPosY, color, boo
 	AddTextComponentString(stirngText)
 	DrawText(intPosX, intPosY)
 end
+function PMenu:canUseButton(button)
+	if not button.role then return true end
+	-- Only used in 'gtalife'
+	if not State or not State.user or not GetLinkedRoles then return false end
+
+	if button.role then
+		local userRole = State.user.group
+		return userRole and tableHasValue(GetLinkedRoles(userRole), button.role)
+	end
+
+	return false
+end
 
 function PMenu:drawMenuButton(button, intX, intY, boolSelected, intW, intH, intID)
 	local tableColor, add, currentMenuData = boolSelected and (button.colorSelected or { 255, 255, 255, 255 }) or (button.colorFree or { 0, 0, 0, 100 }), .0, self.Menu[self.Data.currentMenu]
 	DrawRect(intX, intY, intW, intH, tableColor[1], tableColor[2], tableColor[3], tableColor[4])
-	tableColor = boolSelected and {0, 0, 0} or {255, 255, 255}
-	local stringPrefix = (((button.r and (((CCore and (CCore.jobRank < button.r or CCore.copRank < button.r)) or (button.rfunc and not button.rfunc())) and "~r~" or "")) or "") .. (self.Events["setPrefix"] and self.Events["setPrefix"](button, self.Data) or "")) or ""
-	DrawText2(0, (button.price and "> " or "") .. stringPrefix .. (button.name or ""), .275, intX - intW / 2 + .005, intY - intH / 2 + .0025, tableColor)
+	tableColor = boolSelected and color_black or color_white
+
+	local stringPrefix = (((button.r and (((GM and GM.State.JobRank < button.r) or (button.rfunc and not button.rfunc())) and "~r~" or "")) or "") .. (self.Events["setPrefix"] and self.Events["setPrefix"](button, self.Data) or "")) or ""
+	DrawText2(0, (button.price and "" or "") .. stringPrefix .. (button.name or ""), .275, intX - intW / 2 + .005, intY - intH / 2 + .0025, tableColor)
+
 	local unkCheckbox = currentMenuData and currentMenuData.checkbox or button.checkbox ~= nil and button.checkbox
 	local slide = button.slidemax and button or currentMenuData
 	local slideExist = slide and slide.slidemax and (not slide.slidefilter or not tableHasValue(slide.slidefilter, intID))
-	if button.name and self.Menu[string.lower(button.name)] and not currentMenuData.item and not slideExist then
-		--drawSprite("commonmenutu", "arrowright", intX + (intW / 2.2), intY, .009, .018, 0.0, tableColor[1], tableColor[2], tableColor[3], 255)
-		add = .0125
-	end
+	local canUse = self:canUseButton(button)
 
-	if unkCheckbox ~= nil and (button.checkbox ~= nil or currentMenuData and currentMenuData.checkbox ~= nil) then
-		local bool = unkCheckbox ~= nil and (type(unkCheckbox) == "function" and unkCheckbox(GetPlayerPed(-1), button, self.Base.currentMenu, self)) or unkCheckbox
-		bool = bool and bool == true and 1 or 0
-		if not self.Base.Checkbox["Icon"] or self.Base.Checkbox["Icon"][bool] then
-			local successIcon = self.Base.Checkbox["Icon"] and self.Base.Checkbox["Icon"][bool]
-			if successIcon and successIcon[1] and successIcon[2] then
-				local checkboxColor = boolSelected and bool == 0 and {0, 0, 0} or {255, 255, 255}
-				drawSprite(successIcon[1], successIcon[2], intX + (intW / 2.2), intY, .023, .045, 0.0, checkboxColor[1], checkboxColor[2], checkboxColor[3], 255)
-				return
+	if canUse then
+		if button.name and self.Menu[string.lower(button.name)] and not currentMenuData.item and not slideExist then
+			drawSprite("commonmenutu", "arrowright", intX + (intW / 2.2), intY, .009, .018, 0.0, tableColor[1], tableColor[2], tableColor[3], 255)
+			add = .0125
+		end
+
+		if unkCheckbox ~= nil and (button.checkbox ~= nil or currentMenuData and currentMenuData.checkbox ~= nil) then
+			local bool = unkCheckbox ~= nil and (type(unkCheckbox) == "function" and unkCheckbox(GetPlayerPed(-1), button, self.Base.currentMenu, self)) or unkCheckbox
+			if (button.locked) then
+				bool = bool and bool == true and 2 or 0
+			else
+				bool = bool and bool == true and 1 or 0
+			end
+
+			if not self.Base.Checkbox["Icon"] or self.Base.Checkbox["Icon"][bool] then
+				local successIcon = self.Base.Checkbox["Icon"] and self.Base.Checkbox["Icon"][bool]
+				if successIcon and successIcon[1] and successIcon[2] then
+					local checkboxColor = boolSelected and bool == 0 and color_black or color_white
+					drawSprite(successIcon[1], successIcon[2], intX + (intW / 2.2), intY, .023, .045, 0.0, checkboxColor[1], checkboxColor[2], checkboxColor[3], 255)
+					return
+				end
+			end
+		elseif slideExist or button.ask or button.slidename then
+			local max = slideExist and slide and (type(slide.slidemax) == "function" and slide.slidemax(button, self) or slide.slidemax)
+			if (max and type(max) == "number" and max > 0 or type(max) == "table" and #max > 0) or not slideExist then
+				local defaultIndex = slideExist and button.slidenum or 1
+				local slideText = button.ask and (type(button.ask) == "function" and button.ask(self) or button.askValue or button.ask) or (button.slidename or (type(max) == "number" and (defaultIndex - 1) or type(max[defaultIndex]) == "table" and max[defaultIndex].name or tostring(max[defaultIndex])))
+				slideText = tostring(slideText)
+				if boolSelected and slideExist then
+					drawSprite("commonmenu", "arrowright", intX + (intW / 2) - .01025, intY + 0.0004, .009, .018, 0.0, tableColor[1], tableColor[2], tableColor[3], 255)
+
+					button.offset = MeasureStringWidth(slideText, 0, .275)
+					drawSprite("commonmenu", "arrowleft", intX + (intW / 2) - button.offset - .016, intY + 0.0004, .009, .018, 0.0, tableColor[1], tableColor[2], tableColor[3], 255)
+				end
+
+				local textX = (not boolSelected or button.ask) and -.004 or - .0135
+				DrawText2(0, slideText, .275, intX + intW / 2 + textX,  intY - intH / 2 + .00375, tableColor, false, 2)
+				intX = boolSelected and intX - .0275 or intX - .0125
 			end
 		end
-	elseif slideExist or button.ask or button.slidename then
-		local max = slideExist and slide and (type(slide.slidemax) == "function" and slide.slidemax(button, self) or slide.slidemax)
-		if (max and type(max) == "number" and max > 0 or type(max) == "table" and #max > 0) or not slideExist then
-			local defaultIndex = slideExist and button.slidenum or 1
-			local slideText = button.ask and (type(button.ask) == "function" and button.ask(self) or button.askValue or button.ask) or (button.slidename or (type(max) == "number" and (defaultIndex - 1) or type(max[defaultIndex]) == "table" and max[defaultIndex].name or tostring(max[defaultIndex])))
-			slideText = tostring(slideText)
-			if boolSelected and slideExist then
-				drawSprite("commonmenu", "arrowright", intX + (intW / 2) - .01025, intY + 0.0004, .009, .018, 0.0, tableColor[1], tableColor[2], tableColor[3], 255)
-				button.offset = MeasureStringWidth(slideText, 0, .275)
-				drawSprite("commonmenu", "arrowleft", intX + (intW / 2) - button.offset - .016, intY + 0.0004, .009, .018, 0.0, tableColor[1], tableColor[2], tableColor[3], 255)
-			end
-			local textX = (not boolSelected or button.ask) and -.004 or - .0135
-			DrawText2(0, slideText, .275, intX + intW / 2 + textX,  intY - intH / 2 + .00375, tableColor, false, 2)
-			intX = boolSelected and intX - .0275 or intX - .0125
-		end
-	end
 
-	if button.parentSlider ~= nil then
-		local rectX, rectY = intX + .0925, intY + 0.005
-		local proW, proH = .1, 0.01
-		drawSprite("mpleaderboard", "leaderboard_female_icon", intX + (intW / 2) - .01025, intY + 0.0004, .0156, .0275, 0.0, tableColor[1], tableColor[2], tableColor[3], 255)
-		drawSprite("mpleaderboard", "leaderboard_male_icon", intX - .015, intY + 0.0004, .0156, .0275, 0.0, tableColor[1], tableColor[2], tableColor[3], 255)
-		local slideW = proW * button.parentSlider
-		DrawRect(rectX - proW / 2, rectY - proH / 2, proW, proH, 4, 32, 57, 255)
-		DrawRect(rectX - slideW / 2, rectY - proH / 2, proW * parentSliderSize, proH, 57, 116, 200, 255)
-		DrawRect(rectX - proW / 2, rectY - proH / 2, .002, proH + 0.005, tableColor[1], tableColor[2], tableColor[3], 255)
-	end
-	local textBonus = (self.Events["setBonus"] and self.Events["setBonus"](button, self.Data.currentMenu, self)) or (button.amount and button.amount) or (button.price and "~g~" .. math.floor(button.price) .. "$")
-	if textBonus and string.len(textBonus) > 0 then
-		DrawText2(0, textBonus, .275, intX + (intW / 2) - .005 - add,  intY - intH / 2 + .00375, tableColor, true, 2)
+		if button.parentSlider ~= nil then
+			local rectX, rectY = intX + .0925, intY + 0.005
+			local proW, proH = .1, 0.01
+			drawSprite("mpleaderboard", "leaderboard_female_icon", intX + (intW / 2) - .01025, intY + 0.0004, .0156, .0275, 0.0, tableColor[1], tableColor[2], tableColor[3], 255)
+			drawSprite("mpleaderboard", "leaderboard_male_icon", intX - .015, intY + 0.0004, .0156, .0275, 0.0, tableColor[1], tableColor[2], tableColor[3], 255)
+
+			local slideW = proW * button.parentSlider
+			DrawRect(rectX - proW / 2, rectY - proH / 2, proW, proH, 4, 32, 57, 255)
+			DrawRect(rectX - slideW / 2, rectY - proH / 2, proW * parentSliderSize, proH, 57, 116, 200, 255)
+
+			DrawRect(rectX - proW / 2, rectY - proH / 2, .002, proH + 0.005, tableColor[1], tableColor[2], tableColor[3], 255)
+		end
+
+		local textBonus = (self.Events["setBonus"] and self.Events["setBonus"](button, self.Data.currentMenu, self)) or (button.amount and button.amount) or (button.price and "~g~" .. math.floor(button.price) .. "$")
+		if textBonus and string.len(textBonus) > 0 then
+			DrawText2(0, textBonus, .275, intX + (intW / 2) - .005 - add,  intY - intH / 2 + .00375, tableColor, true, 2)
+		end
+		----ammo
+		local Ammo = (self.Events["setAmmo"] and self.Events["setAmmo"](button, self.Data.currentMenu, self)) or (button.ammo and button.ammo)
+		if Ammo and string.len(Ammo) > 0 then
+			drawSprite("commonmenu", "shop_ammo_icon_b", intX + (intW / 2.15), intY, .02, .034, 0.0, 255, 255, 255, 255)
+		end
+
+	else
+		drawSprite("commonmenu", "shop_lock", intX + (intW / 2.15), intY, .02, .034, 0.0, tableColor[1], tableColor[2], tableColor[3], 255)
 	end
 end
 
@@ -479,10 +515,12 @@ function PMenu:DrawHeader(intCount)
 		self.Height = self.Height + spriteH - 0.01
 		drawSprite("pause_menu_pages_char_mom_dad", "mumdadbg", self.Width - spriteW / 2, self.Height - spriteH / 2, spriteW, spriteH, .0, 255, 255, 255, 255)
 		drawSprite("pause_menu_pages_char_mom_dad", "vignette", self.Width - spriteW / 2, self.Height - spriteH / 2, spriteW, spriteH, .0, 255, 255, 255, 255)
+
 		if currentMenu.father then
 			spriteW, spriteH = .11875, .2111
 			drawSprite("char_creator_portraits", currentMenu.father, self.Width - spriteW / 2, self.Height - spriteH / 2, spriteW, spriteH, .0, 255, 255, 255, 255)
 		end
+
 		if currentMenu.mother then
 			spriteW, spriteH = .11875, .2111
 			local customX = self.Width - .1
@@ -547,7 +585,8 @@ function PMenu:DrawExtra(tableButtons)
 		DrawRect(customX, rectY, customW, rectH, 87, 87, 87, 255)
 		if IsDisabledControlPressed(0, 24) and IsMouseInBounds(rectX, rectY, rectW, rectH) then
 			local mouseXPos = GetControlNormal(0, 239) - proH / 2
-			button.opacity = round(math.max(0.0, math.min(1.0, mouseXPos / rectW)), 2)
+			--print(round(math.max(0.0, math.min(1.0, mouseXPos / rectW)*10),2))
+			button.opacity = math.max(0.0, math.min(1.0, mouseXPos / rectW + 0.081))
 			self.Events["onSlide"](self.Data, button, self.Pag[3], self)
 		end
 		self.Height = self.Height + 0.025
@@ -584,7 +623,7 @@ function PMenu:Draw()
 		self:DrawButtons(tableButtons) -- 0.04ms
 		self:DrawHelpers(tableButtons) -- 0.00ms
 		local currentMenu, currentButton = self.Menu[self.Data.currentMenu], self.Pag[3] and tableButtons and tableButtons[self.Pag[3]]
-		if currentMenu and (currentMenu.extra or currentButton and currentButton.opacity) then
+		if currentMenu and (currentMenu.extra or currentButton and currentButton.opacity or currentButton.advSlider) then
 			self:DrawExtra(tableButtons)
 		end
 		if currentMenu and currentMenu.useFilter then
@@ -648,7 +687,7 @@ function firstToUpper(str)
     return (str:gsub("^%l", string.upper))
 end
 
---
--- Original code by pichotm#6445
--- Edited by Sotek #1234 and lwz#2051
---
+
+
+
+-- Qui fais le malin tombe dans le ravin ^^
