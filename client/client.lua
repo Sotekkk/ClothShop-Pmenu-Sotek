@@ -27,7 +27,6 @@ function KeyboardInput(entryTitle, textEntry, inputText, maxLength)
       return nil
     end
 end
-
 function SavePlayerSkin()
     TriggerEvent('skinchanger:getSkin', function(skin)
         TriggerServerEvent('esx_skin:save', skin)

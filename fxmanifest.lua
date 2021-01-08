@@ -1,6 +1,7 @@
 fx_version 'adamant'
 
 game 'gta5'
+
 -----------IMPORTANT------------
 client_scripts {
 	'@es_extended/locale.lua',
@@ -24,11 +25,6 @@ server_scripts {
 
   }
 
-dependencies {
-  'skinchanger',
-  'esx_datastore',
-  'esx_skin'
-}
 
 --discord : https://discord.gg/MYb6TcHmq9
 --Sotek#1234

@@ -289,7 +289,7 @@ function PMenu:ProcessControl()
 			Citizen.Wait(10)
 		end
 	end
-	if currentMenu and currentMenu.extra or currentBtn and currentBtn.opacity or currentBtn.advSlider then
+	if currentMenu and currentMenu.extra or currentBtn and currentBtn.opacity then
 		if currentBtn.advSlider and IsDisabledControlPressed(0, 24) then
 			local x, y, w = table.unpack(self.Data.advSlider)
 			local left, right = IsMouseInBounds(x - 0.01, self.Height, .015, .03), IsMouseInBounds(x - w + 0.01, self.Height, .015, .03)
