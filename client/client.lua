@@ -10,6 +10,23 @@ Citizen.CreateThread(function()
     Citizen.Wait(5000)
     end
 end)
+function KeyboardInput(entryTitle, textEntry, inputText, maxLength)
+    AddTextEntry(entryTitle, textEntry)
+    DisplayOnscreenKeyboard(1, entryTitle, '', inputText, '', '', '', maxLength)
+  
+    while UpdateOnscreenKeyboard() ~= 1 and UpdateOnscreenKeyboard() ~= 2 do
+      Citizen.Wait(0)
+    end
+  
+    if UpdateOnscreenKeyboard() ~= 2 then
+      local result = GetOnscreenKeyboardResult()
+      Citizen.Wait(500)
+      return result
+    else
+      Citizen.Wait(500)
+      return nil
+    end
+end
 
 function SavePlayerSkin()
     TriggerEvent('skinchanger:getSkin', function(skin)
